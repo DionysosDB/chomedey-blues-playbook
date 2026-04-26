@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Chomedey Blues 2026 Playbook</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100vh;overflow:hidden}
+body{font-family:Segoe UI,Arial,sans-serif;background:#08111d;color:#e8f0ff}
+.app{display:grid;grid-template-columns:272px 1fr;height:100vh;transition:grid-template-columns .28s ease}
+.app.collapsed{grid-template-columns:0px 1fr}
+.sidebar{background:#0e1728;border-right:1px solid rgba(255,255,255,.08);padding:16px 12px;display:flex;flex-direction:column;gap:11px;overflow:hidden;transition:padding .28s ease,opacity .2s ease}
+.app.collapsed .sidebar{padding:0;opacity:0;pointer-events:none}
+.brand h1{margin:0;font-size:1.08rem}
+.brand p{margin:4px 0 0;color:#8fa4c4;font-size:.8rem;line-height:1.35}
+.side-controls{display:flex;gap:7px;flex-wrap:wrap;flex-shrink:0}
+button{border:none;border-radius:10px;padding:8px 11px;font-weight:700;cursor:pointer;background:#2563eb;color:white;font-size:.84rem}
+button.alt{background:#1e2f4b}
+button.green{background:#15803d}
+.play-list{display:flex;flex-direction:column;gap:6px;overflow-y:auto;flex:1;padding-right:4px}
+.play-list::-webkit-scrollbar{width:4px}
+.play-list::-webkit-scrollbar-thumb{background:#2a3f60;border-radius:4px}
+.play-item{width:100%;text-align:left;background:#121f36;color:#e8f0ff;border:2px solid rgba(255,255,255,.07);padding:10px 11px;border-radius:11px;transition:.15s ease;cursor:pointer;flex-shrink:0}
+.play-item:hover{background:#172843}
+.play-item.active-def{border-color:#ef4444;background:#2a1a1a}
+.play-item.active-run{border-color:#f59e0b;background:#1a180a}
+.play-item.active-pass{border-color:#38bdf8;background:#091a2a}
+.type-badge{display:inline-flex;align-items:center;gap:3px;font-size:.7rem;padding:2px 7px;border-radius:20px;font-weight:700;margin-top:4px}
+.badge-def{background:rgba(239,68,68,.18);color:#fca5a5}
+.badge-run{background:rgba(245,158,11,.18);color:#fcd34d}
+.badge-pass{background:rgba(56,189,248,.18);color:#7dd3fc}
+.play-name{font-size:.92rem;font-weight:800}
+.play-note{margin-top:2px;color:#c7d6f2;font-size:.75rem}
+.legend{display:flex;flex-wrap:wrap;gap:7px;padding:6px 0 0}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:.73rem;color:#c7d6f2}
+.leg-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+.main{padding:16px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;height:100vh}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.toggle-btn{background:#1e2f4b;padding:8px 11px;font-size:1rem;border-radius:10px;flex-shrink:0}
+.title-block h2{margin:0;font-size:1.25rem}
+.title-block p{margin:3px 0 0;color:#9eb1cf;font-size:.85rem}
+.plays-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.play-card{background:#101a2d;border:2px solid rgba(255,255,255,.08);border-radius:15px;overflow:hidden;scroll-margin-top:16px;transition:border-color .2s,box-shadow .2s}
+.play-card.hl-def{border-color:#ef4444;box-shadow:0 0 0 2px rgba(239,68,68,.3)}
+.play-card.hl-run{border-color:#f59e0b;box-shadow:0 0 0 2px rgba(245,158,11,.3)}
+.play-card.hl-pass{border-color:#38bdf8;box-shadow:0 0 0 2px rgba(56,189,248,.3)}
+.card-head{padding:12px 13px 7px;display:flex;align-items:flex-start;justify-content:space-between}
+.card-head-left{}
+.card-title{font-size:.96rem;font-weight:800}
+.card-note{font-size:.76rem;color:#9eb1cf;margin-top:2px}
+.card-btns{display:flex;gap:7px;padding:0 13px 11px}
+.mini{padding:7px 10px;font-size:.81rem;border-radius:9px}
+svg{display:block;width:100%;height:auto;border-radius:8px;background:#f0f7ec}
+.field-line{stroke:rgba(0,0,0,.6);stroke-width:1.2}
+.hash-mark{stroke:rgba(0,0,0,.7);stroke-width:1.2}
+.yard-label{fill:rgba(0,0,0,.6);font-size:9.5px;font-weight:700;font-family:Arial,sans-serif}
+.los{stroke:#d97706;stroke-width:2;stroke-dasharray:5 4}
+.route-fake{fill:none;stroke:#374151;stroke-width:2;stroke-dasharray:5 4;stroke-linecap:round}
+.route-static{fill:none;stroke-width:2.5;stroke-dasharray:7 4;stroke-linecap:round;stroke-linejoin:round}
+.route-animate{fill:none;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+.def-x line{stroke:#ef4444;stroke-width:2.8;stroke-linecap:round}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="sidebar">
+    <div class="brand"><h1>Chomedey Blues 2026</h1><p>Click a play to scroll to it.</p></div>
+    <div class="side-controls">
+      <button id="sidePlayAll">&#9654; Play All</button>
+      <button class="alt" id="sideResetAll">&#8635; Reset All</button>
+    </div>
+    <div class="legend">
+      <div class="leg-item"><div class="leg-dot" style="background:#f59e0b"></div>QB</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#38bdf8"></div>X</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#a78bfa"></div>Z</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#4ade80"></div>H</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#1e3a5f;border:1px solid #64748b"></div>OL</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#ef4444"></div>DEF</div>
+    </div>
+    <div class="play-list" id="playList"></div>
+  </aside>
+  <main class="main" id="mainArea">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="toggle-btn" id="toggleSidebar">&#9776;</button>
+        <div class="title-block">
+          <h2>Chomedey Blues 2026 Playbook</h2>
+          <p>All 8 plays &mdash; click sidebar to jump</p>
+        </div>
+      </div>
+      <button id="dlBtn" class="green">&#11015; Download</button>
+      <button id="pdfBtn" style="background:#7c3aed;color:white">&#128196; Export PDF</button>
+    </div>
+    <div class="plays-grid" id="playsGrid"></div>
+  </main>
+</div>
+<script>
+const COLORS={QB:'#f59e0b',X:'#38bdf8',Z:'#a78bfa',H:'#4ade80',LT:'#1e3a5f',LG:'#1e3a5f',C:'#1e3a5f',RG:'#1e3a5f',RT:'#1e3a5f'};
+const STROKE={QB:'#0f172a',X:'#0f172a',Z:'#0f172a',H:'#0f172a',LT:'#93c5fd',LG:'#93c5fd',C:'#93c5fd',RG:'#93c5fd',RT:'#93c5fd'};
+const RCOLOR={QB:'#f59e0b',X:'#38bdf8',Z:'#a78bfa',H:'#4ade80'};
+const ANIM_DUR=1800,RESET_DELAY=500;
+const HL={def:{card:'hl-def',side:'active-def',badge:'badge-def',label:'Defense',emoji:'🛡️'},
+          run:{card:'hl-run',side:'active-run',badge:'badge-run',label:'Run',emoji:'🏃'},
+          pass:{card:'hl-pass',side:'active-pass',badge:'badge-pass',label:'Pass',emoji:'🏈'}};
+
+function base(){
+  return [{id:'X',x:30,y:170},{id:'LT',x:82,y:170},{id:'LG',x:108,y:170},{id:'C',x:134,y:170},{id:'RG',x:160,y:170},{id:'RT',x:186,y:170},{id:'Z',x:274,y:170},{id:'QB',x:134,y:198},{id:'H',x:134,y:226}];
+}
+
+const plays=[
+  {id:'rhino',type:'def',title:'🦏 Rhino Defense',note:'9 defenders: 2 DL, 2 LB, 2 CB, 3 Safety',
+   offense:base(),
+   defense:[{x:66,y:148},{x:202,y:148},{x:108,y:136},{x:160,y:136},{x:30,y:148},{x:274,y:148},{x:235,y:100},{x:72,y:88},{x:128,y:76}],
+   routes:[]},
+  {id:'hippo',type:'run',title:'🦛 Hippo',note:'QB hands off to H, H straight up left of C',
+   offense:base(),
+   routes:[{runner:'',type:'fake',d:'M134 198 L134 212 L134 226'},{runner:'H',type:'solid',d:'M134 226 L126 210 L122 192 L120 170 L118 140 L116 108 L114 72'}]},
+  {id:'lion',type:'run',title:'🦁 Lion',note:'H fake handoff, QB sweeps right between RT & Z',
+   offense:base(),
+   routes:[{runner:'',type:'fake',d:'M134 226 L134 212 L134 198'},{runner:'QB',type:'solid',d:'M134 198 L162 197 L186 194 L208 191 L226 188 L232 186'}]},
+  {id:'cheetah',type:'run',title:'🐆 Cheetah',note:'Handoff to H, diagonal up-right past RT',
+   offense:base(),
+   routes:[{runner:'',type:'fake',d:'M134 198 L134 212 L134 226'},{runner:'H',type:'solid',d:'M134 226 L156 206 L178 185 L196 165 L218 140 L240 112 L254 84'}]},
+  {id:'gazelle',type:'run',title:'🦌 Gazelle',note:'Handoff to H, diagonal up-left past LT',
+   offense:base(),
+   routes:[{runner:'',type:'fake',d:'M134 198 L134 212 L134 226'},{runner:'H',type:'solid',d:'M134 226 L112 206 L90 185 L70 164 L52 140 L38 114 L30 86'}]},
+  {id:'shark',type:'run',title:'🦈 Shark',note:'H sweeps right past RT, then upfield',
+   offense:base(),
+   routes:[{runner:'H',type:'solid',d:'M134 226 L162 222 L186 216 L212 208 Q232 198 234 180 Q236 158 234 130 L232 98 L230 72'}]},
+  {id:'zebra',type:'pass',title:'🦓 Zebra',note:'Z short inward slant behind LOS toward QB',
+   offense:base(),
+   routes:[{runner:'Z',type:'solid',d:'M274 170 Q262 175 248 182 Q238 187 230 190'}]},
+  {id:'xerus',type:'pass',title:'🐿️ Xerus',note:'X short inward slant behind LOS toward QB',
+   offense:base(),
+   routes:[{runner:'X',type:'solid',d:'M30 170 Q42 175 56 182 Q66 187 74 190'}]}
+];
+
+const NS='http://www.w3.org/2000/svg';
+const mk=(tag,a={})=>{const e=document.createElementNS(NS,tag);Object.entries(a).forEach(([k,v])=>e.setAttribute(k,v));return e;};
+
+function buildSVG(play){
+  const svg=mk('svg',{viewBox:'0 0 320 285',id:'svg-'+play.id});
+  const yardLines=[18,56,94,132,170,208,246];
+  yardLines.forEach((y,i)=>{
+    svg.appendChild(mk('line',{x1:18,y1:y,x2:302,y2:y,class:'field-line'}));
+    [118,202].forEach(hx=>{svg.appendChild(mk('line',{x1:hx-5,y1:y,x2:hx+5,y2:y,class:'hash-mark'}));});
+    const losIdx=4,ydsFromLos=Math.abs(i-losIdx)*10;
+    if(ydsFromLos>0&&ydsFromLos<=50){
+      const t1=mk('text',{x:4,y:y+4,class:'yard-label'});t1.textContent=ydsFromLos;svg.appendChild(t1);
+      const t2=mk('text',{x:308,y:y+4,class:'yard-label'});t2.textContent=ydsFromLos;svg.appendChild(t2);
+    }
+  });
+  for(let i=0;i<yardLines.length-1;i++){
+    const midY=(yardLines[i]+yardLines[i+1])/2;
+    svg.appendChild(mk('line',{x1:18,y1:midY,x2:302,y2:midY,stroke:'rgba(0,0,0,.2)','stroke-width':'0.7',fill:'none'}));
+    [118,202].forEach(hx=>{svg.appendChild(mk('line',{x1:hx-5,y1:midY,x2:hx+5,y2:midY,class:'hash-mark'}));});
+  }
+  const allLines=[18,37,56,75,94,113,132,151,170,189,208,227,246];
+  for(let i=0;i<allLines.length-1;i++){
+    const gap=allLines[i+1]-allLines[i];
+    for(let t=1;t<=4;t++){
+      const ty=allLines[i]+gap*t/5;
+      [118,202].forEach(hx=>{svg.appendChild(mk('line',{x1:hx-3,y1:ty,x2:hx+3,y2:ty,stroke:'rgba(0,0,0,.5)','stroke-width':'1'}));});
+    }
+  }
+  svg.appendChild(mk('rect',{x:18,y:18,width:284,height:248,fill:'none',class:'field-line'}));
+  svg.appendChild(mk('line',{x1:18,y1:170,x2:302,y2:170,class:'los'}));
+  const defs=mk('defs');
+  const runners=[...new Set((play.routes||[]).map(r=>r.runner).filter(Boolean))];
+  runners.forEach(runner=>{
+    const col=RCOLOR[runner]||'#ffffff';
+    const marker=mk('marker',{id:'arr-'+play.id+'-'+runner,viewBox:'0 0 10 10',refX:'9',refY:'5',markerWidth:'7',markerHeight:'7',orient:'auto-start-reverse'});
+    marker.appendChild(mk('path',{d:'M 0 0 L 10 5 L 0 10 z',fill:col}));
+    defs.appendChild(marker);
+  });
+  svg.appendChild(defs);
+  (play.routes||[]).forEach((r,i)=>{
+    const col=RCOLOR[r.runner]||'#ffffff';
+    if(r.type==='fake'){svg.appendChild(mk('path',{d:r.d,class:'route-fake',id:'s-'+play.id+'-'+i}));}
+    else{const sp=mk('path',{d:r.d,class:'route-static',stroke:col,id:'s-'+play.id+'-'+i});sp.setAttribute('marker-end','url(#arr-'+play.id+'-'+r.runner+')');svg.appendChild(sp);}
+    const ap=mk('path',{d:r.d,class:'route-animate',stroke:col,id:'a-'+play.id+'-'+i});
+    ap.dataset.runner=r.runner||'';ap.dataset.dur=play.type==='pass'?'700':'';svg.appendChild(ap);
+  });
+  (play.defense||[]).forEach((d,idx)=>{
+    const g=mk('g',{class:'def-x',id:'def-'+play.id+'-'+idx});
+    g.appendChild(mk('line',{x1:d.x-9,y1:d.y-9,x2:d.x+9,y2:d.y+9}));
+    g.appendChild(mk('line',{x1:d.x+9,y1:d.y-9,x2:d.x-9,y2:d.y+9}));
+    svg.appendChild(g);
+  });
+  play.offense.forEach((p,i)=>{
+    const col=COLORS[p.id]||'#e2e8f0';const scol=STROKE[p.id]||'#0f172a';
+    const g=mk('g',{class:'player',id:'pl-'+play.id+'-'+p.id+'-'+i});
+    g.dataset.pid=p.id;g.dataset.x=p.x;g.dataset.y=p.y;
+    g.setAttribute('transform','translate('+p.x+','+p.y+')');
+    const r=p.id.length>1?14:13;
+    g.appendChild(mk('circle',{cx:0,cy:0,r:r,fill:col,stroke:scol,'stroke-width':'1.8'}));
+    const fs=p.id.length>1?'8.5px':'10px';
+    const tx=mk('text',{x:0,y:1,fill:scol,style:'font-size:'+fs+';font-weight:900;text-anchor:middle;dominant-baseline:middle'});
+    tx.textContent=p.id;g.appendChild(tx);svg.appendChild(g);
+  });
+  return svg;
+}
+
+function clearHighlights(){
+  document.querySelectorAll('.play-card').forEach(c=>c.classList.remove('hl-def','hl-run','hl-pass'));
+  document.querySelectorAll('.play-item').forEach(b=>b.classList.remove('active-def','active-run','active-pass'));
+}
+function highlightPlay(id){
+  clearHighlights();
+  const play=plays.find(p=>p.id===id);if(!play)return;
+  const hlInfo=HL[play.type];
+  const card=document.getElementById('card-'+id);if(card)card.classList.add(hlInfo.card);
+  const btn=document.getElementById('side-'+id);if(btn)btn.classList.add(hlInfo.side);
+}
+
+function buildGrid(){
+  const grid=document.getElementById('playsGrid');grid.innerHTML='';
+  plays.forEach(play=>{
+    const hlInfo=HL[play.type];
+    const card=document.createElement('div');card.className='play-card';card.id='card-'+play.id;
+    const head=document.createElement('div');head.className='card-head';
+    const left=document.createElement('div');left.className='card-head-left';
+    left.innerHTML='<div class="card-title">'+play.title+'</div><div class="card-note">'+play.note+'</div>'+'<span class="type-badge '+hlInfo.badge+'">'+hlInfo.emoji+' '+hlInfo.label+'</span>';
+    head.appendChild(left);card.appendChild(head);
+    const btns=document.createElement('div');btns.className='card-btns';
+    const pb=document.createElement('button');pb.className='mini';pb.innerHTML='&#9654; Play';pb.dataset.play=play.id;
+    const rb=document.createElement('button');rb.className='mini alt';rb.innerHTML='&#8635; Reset';rb.dataset.reset=play.id;
+    btns.appendChild(pb);btns.appendChild(rb);card.appendChild(btns);
+    card.appendChild(buildSVG(play));grid.appendChild(card);resetPlay(play.id,true);
+  });
+}
+
+function buildSidebar(){
+  const list=document.getElementById('playList');list.innerHTML='';
+  plays.forEach(p=>{
+    const hlInfo=HL[p.type];
+    const b=document.createElement('button');b.className='play-item';b.id='side-'+p.id;
+    b.innerHTML='<div class="play-name">'+p.title+'</div>'
+      +'<span class="type-badge '+hlInfo.badge+'">'+hlInfo.emoji+' '+hlInfo.label+'</span>';
+    b.addEventListener('click',()=>{
+      highlightPlay(p.id);
+      const card=document.getElementById('card-'+p.id);
+      if(card)card.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+    list.appendChild(b);
+  });
+}
+
+function resetPlay(id,immediate){
+  const svg=document.getElementById('svg-'+id);if(!svg)return;
+  svg.querySelectorAll('.player').forEach(n=>{n.style.transition='none';n.setAttribute('transform','translate('+n.dataset.x+','+n.dataset.y+')');});
+  svg.querySelectorAll('.route-animate').forEach(p=>{
+    p.style.transition='none';p.style.opacity='0';
+    const l=p.getTotalLength?p.getTotalLength():200;
+    p.style.strokeDasharray=l;p.style.strokeDashoffset=l;if(immediate)p.getBoundingClientRect();
+  });
+}
+function moveAlong(node,path,dur){
+  if(!node||!path)return;
+  const s=performance.now(),l=path.getTotalLength();
+  function step(now){const t=Math.min(1,(now-s)/dur);const pt=path.getPointAtLength(l*t);node.setAttribute('transform','translate('+pt.x+','+pt.y+')');if(t<1)requestAnimationFrame(step);}
+  requestAnimationFrame(step);
+}
+function animPlay(id){
+  highlightPlay(id);resetPlay(id,true);
+  const svg=document.getElementById('svg-'+id);if(!svg)return;
+  svg.querySelectorAll('.route-animate').forEach(path=>{
+    const l=path.getTotalLength?path.getTotalLength():200;
+    path.style.opacity='1';path.style.strokeDasharray=l;path.style.strokeDashoffset=l;path.getBoundingClientRect();
+    const dur=parseInt(path.dataset.dur)||ANIM_DUR;
+    path.style.transition='stroke-dashoffset '+dur+'ms linear,opacity .2s linear';path.style.strokeDashoffset='0';
+    const runner=path.dataset.runner;
+    if(runner){const node=[...svg.querySelectorAll('.player')].find(n=>n.dataset.pid===runner);moveAlong(node,path,parseInt(path.dataset.dur)||ANIM_DUR);}
+  });
+  const playDur=plays.find(p=>p.id===id)?.type==='pass'?700:ANIM_DUR;
+  setTimeout(()=>resetPlay(id,false),playDur+RESET_DELAY);
+}
+async function playAll(){for(const p of plays){animPlay(p.id);await new Promise(r=>setTimeout(r,ANIM_DUR+RESET_DELAY+400));}}
+
+document.getElementById('playsGrid').addEventListener('click',e=>{
+  const pb=e.target.closest('[data-play]');if(pb)animPlay(pb.dataset.play);
+  const rb=e.target.closest('[data-reset]');if(rb)resetPlay(rb.dataset.reset,true);
+});
+document.getElementById('toggleSidebar').addEventListener('click',()=>document.getElementById('app').classList.toggle('collapsed'));
+document.getElementById('sidePlayAll').addEventListener('click',playAll);
+document.getElementById('sideResetAll').addEventListener('click',()=>{clearHighlights();plays.forEach(p=>resetPlay(p.id,true));});
+document.getElementById('dlBtn').addEventListener('click',()=>{
+  const blob=new Blob(['<!DOCTYPE html>'+document.documentElement.outerHTML],{type:'text/html'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='chomedey-blues-playbook.html';a.click();URL.revokeObjectURL(a.href);
+});
+
+function makeSVGforPrint(play){
+  const svg=mk('svg',{viewBox:'0 0 320 285'});
+  const yardLines=[18,56,94,132,170,208,246];
+  yardLines.forEach((y,i)=>{
+    svg.appendChild(mk('line',{x1:18,y1:y,x2:302,y2:y,class:'field-line'}));
+    [118,202].forEach(hx=>{svg.appendChild(mk('line',{x1:hx-5,y1:y,x2:hx+5,y2:y,class:'hash-mark'}));});
+    const ydsFromLos=Math.abs(i-4)*10;
+    if(ydsFromLos>0&&ydsFromLos<=50){
+      const t1=mk('text',{x:4,y:y+4,class:'yard-label'});t1.textContent=ydsFromLos;svg.appendChild(t1);
+      const t2=mk('text',{x:308,y:y+4,class:'yard-label'});t2.textContent=ydsFromLos;svg.appendChild(t2);
+    }
+  });
+  for(let i=0;i<yardLines.length-1;i++){
+    const midY=(yardLines[i]+yardLines[i+1])/2;
+    svg.appendChild(mk('line',{x1:18,y1:midY,x2:302,y2:midY,stroke:'rgba(0,0,0,.2)',fill:'none','stroke-width':'0.7'}));
+    [118,202].forEach(hx=>{svg.appendChild(mk('line',{x1:hx-5,y1:midY,x2:hx+5,y2:midY,class:'hash-mark'}));});
+  }
+  const allLines=[18,37,56,75,94,113,132,151,170,189,208,227,246];
+  for(let i=0;i<allLines.length-1;i++){
+    const gap=allLines[i+1]-allLines[i];
+    for(let t=1;t<=4;t++){
+      const ty=allLines[i]+gap*t/5;
+      [118,202].forEach(hx=>{svg.appendChild(mk('line',{x1:hx-3,y1:ty,x2:hx+3,y2:ty,stroke:'rgba(0,0,0,.5)','stroke-width':'1'}));});
+    }
+  }
+  svg.appendChild(mk('rect',{x:18,y:18,width:284,height:248,fill:'none',class:'field-line'}));
+  svg.appendChild(mk('line',{x1:18,y1:170,x2:302,y2:170,class:'los'}));
+  const uid='p'+Math.random().toString(36).slice(2,7);
+  const defs=mk('defs');
+  const runners=[...new Set((play.routes||[]).map(r=>r.runner).filter(Boolean))];
+  runners.forEach(runner=>{
+    const col=RCOLOR[runner]||'#ffffff';
+    const marker=mk('marker',{id:'arr-'+uid+'-'+runner,viewBox:'0 0 10 10',refX:'9',refY:'5',markerWidth:'7',markerHeight:'7',orient:'auto-start-reverse'});
+    marker.appendChild(mk('path',{d:'M 0 0 L 10 5 L 0 10 z',fill:col}));
+    defs.appendChild(marker);
+  });
+  svg.appendChild(defs);
+  (play.routes||[]).forEach(r=>{
+    const col=RCOLOR[r.runner]||'#ffffff';
+    if(r.type==='fake'){svg.appendChild(mk('path',{d:r.d,class:'route-fake'}));}
+    else{const sp=mk('path',{d:r.d,class:'route-static',stroke:col});sp.setAttribute('marker-end','url(#arr-'+uid+'-'+r.runner+')');svg.appendChild(sp);}
+  });
+  (play.defense||[]).forEach(d=>{
+    const g=mk('g',{class:'def-x'});
+    g.appendChild(mk('line',{x1:d.x-9,y1:d.y-9,x2:d.x+9,y2:d.y+9}));
+    g.appendChild(mk('line',{x1:d.x+9,y1:d.y-9,x2:d.x-9,y2:d.y+9}));
+    svg.appendChild(g);
+  });
+  play.offense.forEach(p=>{
+    const col=COLORS[p.id]||'#e2e8f0';const scol=STROKE[p.id]||'#0f172a';
+    const g=mk('g');g.setAttribute('transform','translate('+p.x+','+p.y+')');
+    const r=p.id.length>1?14:13;
+    g.appendChild(mk('circle',{cx:0,cy:0,r:r,fill:col,stroke:scol,'stroke-width':'1.8'}));
+    const fs=p.id.length>1?'8.5px':'10px';
+    const tx=mk('text',{x:0,y:1,fill:scol,style:'font-size:'+fs+';font-weight:900;text-anchor:middle;dominant-baseline:middle'});
+    tx.textContent=p.id;g.appendChild(tx);svg.appendChild(g);
+  });
+  return svg;
+}
+
+document.getElementById('pdfBtn').addEventListener('click',()=>{
+  const badgeCSS={def:{bg:'#fee2e2',color:'#991b1b'},run:{bg:'#fef3c7',color:'#92400e'},pass:{bg:'#e0f2fe',color:'#0369a1'}};
+  const typeLabel={def:'🛡️ Defense',run:'🏃 Run',pass:'🏈 Pass'};
+  const ser=new XMLSerializer();
+  let body='';
+
+  body+='<div class="page">';
+  body+='<h1>Chomedey Blues 2026 — Playbook Summary</h1>';
+  body+='<div class="sum-grid">';
+  plays.forEach(play=>{
+    const bc=badgeCSS[play.type];
+    body+='<div class="sum-card">';
+    body+=ser.serializeToString(makeSVGforPrint(play));
+    body+='<div class="sum-info"><div class="sum-title">'+play.title+'</div>';
+    body+='<span class="sum-badge" style="background:'+bc.bg+';color:'+bc.color+'">'+typeLabel[play.type]+'</span></div>';
+    body+='</div>';
+  });
+  body+='</div></div>';
+
+  plays.forEach((play,idx)=>{
+    const bc=badgeCSS[play.type];
+    body+='<div class="page'+(idx===plays.length-1?' last':'')+'">';
+    body+='<div class="play-header">';
+    body+='<div class="play-title">'+play.title+'</div>';
+    body+='<div class="play-desc">'+play.note+'</div>';
+    body+='<span class="play-badge" style="background:'+bc.bg+';color:'+bc.color+'">'+typeLabel[play.type]+'</span>';
+    body+='</div>';
+    body+=ser.serializeToString(makeSVGforPrint(play));
+    body+='</div>';
+  });
+
+  const css=`
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,sans-serif;background:white;color:#111}
+    svg{background:#f0f7ec;border-radius:6px;display:block;width:100%;height:auto}
+    .field-line{stroke:rgba(0,0,0,.6);stroke-width:1.2}
+    .hash-mark{stroke:rgba(0,0,0,.7);stroke-width:1.2}
+    .yard-label{fill:rgba(0,0,0,.6);font-size:9.5px;font-weight:700;font-family:Arial,sans-serif}
+    .los{stroke:#d97706;stroke-width:2;stroke-dasharray:5 4}
+    .route-fake{fill:none;stroke:#374151;stroke-width:2;stroke-dasharray:5 4;stroke-linecap:round}
+    .route-static{fill:none;stroke-width:2.5;stroke-dasharray:7 4;stroke-linecap:round;stroke-linejoin:round}
+    .def-x line{stroke:#ef4444;stroke-width:2.8;stroke-linecap:round}
+    @page{size:letter portrait;margin:0.55in}
+    .page{page-break-after:always;page-break-inside:avoid}
+    .page.last{page-break-after:auto}
+    h1{font-size:16px;font-weight:900;margin-bottom:10px}
+    .sum-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+    .sum-card{border:1px solid #ccc;border-radius:5px;overflow:hidden}
+    .sum-info{padding:3px 5px 5px}
+    .sum-title{font-size:10px;font-weight:800;color:#111;margin-bottom:2px}
+    .sum-badge{font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;display:inline-block}
+    .play-header{margin-bottom:14px}
+    .play-title{font-size:20px;font-weight:900;margin-bottom:3px}
+    .play-desc{font-size:11px;color:#444;margin-bottom:6px}
+    .play-badge{font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px;display:inline-block}
+  `;
+
+  const fullHTML='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'+css+'</style></head><body>'+body+'</body></html>';
+  const win=window.open('','_blank','width=900,height=700');
+  win.document.open();
+  win.document.write(fullHTML);
+  win.document.close();
+  win.onload=()=>{setTimeout(()=>{win.print();},300);};
+  setTimeout(()=>{try{win.print();}catch(e){}},800);
+});
+
+buildSidebar();buildGrid();
+</script>
+</body>
+</html>
